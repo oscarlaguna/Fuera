@@ -1,5 +1,9 @@
+﻿/*
+
 // Oscar Laguna
+
 #pragma once
+
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
@@ -13,29 +17,28 @@ class FUERA_API UGrabber : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UGrabber();
-
 	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	UPROPERTY(EditAnywhere)
-	float Reach = 100.0f;
-
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+    
 protected:
 	// Called when the game starts
-	virtual void BeginPlay() override;
+	virtual void BeginPlay() override;	
 
 private:
-	UPROPERTY()
-	UPhysicsHandleComponent* PhysicsHandle = nullptr;
+    UPROPERTY(EditAnywhere)
+	float Reach = 100.0f;
 	
-	UPROPERTY()
-	UInputComponent* InputComponent = nullptr;
-
+	UPhysicsHandleComponent* PhysicsHandle = nullptr;
+	UInputComponent* InputComponent= nullptr;
+	
 	void Grab();
-	void Release();
+    void Release();
 	void FindPhysicsHandle();
 	void SetupInputComponent();
+
+	//Devuelve el primer Actor al alcance con physics body
 	FHitResult GetFirstPhysicsBodyInReach() const;
-	FVector GetPlayersReach() const;
-	FVector GetPlayersWorldPosition() const;
 };
+
+
+*/

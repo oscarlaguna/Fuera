@@ -1,8 +1,12 @@
 // Oscar Laguna
 #include "OpenDoor.h"
+
+#include "Components/AudioComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
+#include "UObject/Object.h"
+
 
 UOpenDoor::UOpenDoor()
 {
@@ -15,24 +19,51 @@ UOpenDoor::UOpenDoor()
 void UOpenDoor::BeginPlay()
 {
 	Super::BeginPlay();
-	//FRotator CurrentRotation = GetOwner()->GetActorRotation();
-	//UE_LOG(LogTemp, Warning, TEXT("%s"),*CurrentRotation.ToString());
-	//FRotator OpenDoor(0.0f,-90.0f,0.0f);
-	//GetOwner()->SetActorRotation(OpenDoor);
-	
-	InitialYawn = GetOwner()->GetActorRotation().Yaw; //Inicializo la vble a la posición inicial de la puerta
+	DoorMesh = Cast<UMeshComponent>(GetOwner()->GetDefaultSubobjectByName("S_Door"));
+	InitialYawn = DoorMesh->GetComponentRotation().Yaw;	
 	TargetYawn = InitialYawn+RotationYaw; //Asigno la suma de la posión inicial + los grados de giro
-	if(!ActorThatOpenDoor)
+	DoorSound = GetOwner()->FindComponentByClass<UAudioComponent>();
+	
+	PressurePlate = GetOwner()->FindComponentByClass<UBoxComponent>();
+	if (!PressurePlate)
 	{
-		ActorThatOpenDoor = GetWorld()->GetFirstPlayerController()->GetPawn();
+		UE_LOG(LogTemp,Error,TEXT("no encuentro"));
 	}
+
+	
+	
+}
+
+float UOpenDoor::TotalMassOfActorsInVolume() const
+{
+	TArray<AActor*> OverlappingActors;
+	if(PressurePlate)
+	{
+		PressurePlate->GetOverlappingActors(OverlappingActors);
+	}
+	
+	float MassAcumulator = 0.0f;
+
+	
+		for (int i=0;i<OverlappingActors.Num();i++)
+		{
+			UPrimitiveComponent* ActorWithPrimitiveComponent = OverlappingActors[i]->FindComponentByClass<UPrimitiveComponent>();
+			if (ActorWithPrimitiveComponent && ActorWithPrimitiveComponent->ComponentHasTag(*OpenerTag))
+			{
+				MassAcumulator += ActorWithPrimitiveComponent->GetMass();
+			}		
+		}
+	
+	
+	return MassAcumulator;
 }
 
 // Called every frame
 void UOpenDoor::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (PressurePlate->IsOverlappingActor(ActorThatOpenDoor))
+	
+	if (PressurePlate && TotalMassOfActorsInVolume() > OpeningMass)
 	{
 		OpenDoor(DeltaTime);
 		InitialTimeOpening = GetWorld()->GetTimeSeconds(); //Cuando marche del trigger me quedaré con el último valor
@@ -46,19 +77,30 @@ void UOpenDoor::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 
 void UOpenDoor::OpenDoor(float DeltaTime)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("%s"),*GetOwner()->GetActorRotation().ToString());
-	//UE_LOG(LogTemp, Warning, TEXT("Yaw is %f"),GetOwner()->GetActorRotation().Yaw);
-	//float NextStepYawn = FMath::Lerp(GetOwner()->GetActorRotation().Yaw,TargetYawn,.1f);
-	
-	float NextStepYawn = FMath::FInterpTo(GetOwner()->GetActorRotation().Yaw,TargetYawn,DeltaTime,OpenSpeed);
+	float NextStepYawn = FMath::FInterpTo(DoorMesh->GetComponentRotation().Yaw,TargetYawn,DeltaTime,OpenSpeed);
 	FRotator OpenDoor(.0f,NextStepYawn,.0f);
-	GetOwner()->SetActorRotation(OpenDoor);
+	DoorMesh->SetWorldRotation(OpenDoor);
+	
+	if(YaHeSonado==false)
+	{
+		DoorSound->SetSound(OpenDoorSound);
+		DoorSound->Play();
+		YaHeSonado = true;
+	}	
 }
 
 void UOpenDoor::CloseDoor(float DeltaTime)
 {
-	float NextStepYawn = FMath::FInterpTo(GetOwner()->GetActorRotation().Yaw,InitialYawn,DeltaTime,CloseSpeed);
+	float NextStepYawn = FMath::FInterpTo(DoorMesh->GetComponentRotation().Yaw,InitialYawn,DeltaTime,CloseSpeed);
 	FRotator OpenDoor(.0f,NextStepYawn,.0f);
-	GetOwner()->SetActorRotation(OpenDoor);
-}
+	DoorMesh->SetWorldRotation(OpenDoor);
+	
+	//GetOwner()->SetActorRotation(OpenDoor);
 
+	if(YaHeSonado==true)
+	{
+		DoorSound->SetSound(CloseDoorSound);
+		DoorSound->Play();
+		YaHeSonado=false;
+	}
+}
